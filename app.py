@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 # ─── LangChain 0.2+ Community Imports ─────────────────────────────────
 from langchain_community.document_loaders import DirectoryLoader, TextLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import Chroma
+from langchain_community.vectorstores import FAISS
 from langchain_huggingface.embeddings import HuggingFaceEmbeddings
 from langchain_google_genai.chat_models import ChatGoogleGenerativeAI
 from langchain.chains import create_retrieval_chain
@@ -48,10 +48,9 @@ def build_retriever():
     chunks = splitter.split_documents(raw_docs)
 
     embedder = HuggingFaceEmbeddings(model_name=EMBED_MODEL)
-    vectordb = Chroma.from_documents(
+    vectordb = FAISS.from_documents(
         documents=chunks,
         embedding=embedder,
-        collection_name=f"kb-{os.getpid()}",
     )
     return vectordb.as_retriever(search_kwargs={"k": TOP_K})
 
