@@ -70,11 +70,11 @@ def build_qa_chain():
 
     # Create the system prompt using the modern ChatPromptTemplate
     system_prompt = (
-        "You are Buddy AI, a helpful assistant. Use the given context to answer the question. "
+        "You are Jerry AI, a helpful assistant. Use the given context to answer the question. "
         "You can also reference information from our previous conversation. "
         "If you don't know the answer based on the context or conversation, say 'Sorry, I don't know based on the company data.' "
         "Keep the answer concise and relevant. "
-        "If someone asks who you are, introduce yourself as Buddy AI. "
+        "If someone asks who you are, introduce yourself as Jerry AI. "
         "If someone tells you their name, remember it and use it in future responses to personalize the conversation.\n\n"
         "Context: {context}"
     )
@@ -118,7 +118,7 @@ def query_grounded_chain(client, config, retriever, question):
     
     # Create enhanced prompt with both RAG context and web search capability
     enhanced_prompt = f"""
-    You are Buddy AI, a helpful assistant. You have access to company documents and web search.
+    You are Jerry AI, a helpful assistant. You have access to company documents and web search.
     You can also reference information from our previous conversation.
     
     Company Documents Context:
@@ -133,7 +133,7 @@ def query_grounded_chain(client, config, retriever, question):
     4. If the answer requires recent information not in company documents, rely more on web search
     5. Always be clear about which sources you're using
     6. If you can't find relevant information in either source, say so clearly
-    7. If someone asks who you are, introduce yourself as Buddy AI
+    7. If someone asks who you are, introduce yourself as Jerry AI
     8. If someone tells you their name, remember it and use it in future responses to personalize the conversation
     9. Reference previous conversation context when relevant
     """
@@ -197,7 +197,7 @@ def add_citations_to_text(response):
 
 def main():
     st.set_page_config(page_title="Company-Doc Chatbot", page_icon="🤖")
-    st.title("Buddy AI")
+    st.title("Jerry AI")
 
     # Sidebar for settings
     with st.sidebar:
@@ -244,7 +244,7 @@ def main():
         # Add welcome message as the first message
         welcome_message = {
             "role": "assistant",
-            "content": "Hi there! 👋 Welcome to the team! \n\nI'm Buddy, your AI assistant. I'm here to help you with any questions or doubts you might have about our company, policies, procedures, or anything work-related. \n\nFeel free to ask me anything - I have access to all our company documents and can also search the web for recent information when needed. Let's make your onboarding journey smooth and productive! 🚀\n\nWhat would you like to know? (Feel free to tell me your name so I can personalize our conversation!)"
+            "content": "Hi there! 👋 Welcome to the team! \n\nI'm Jerry, your AI assistant. I'm here to help you with any questions or doubts you might have about our company, policies, procedures, or anything work-related. \n\nFeel free to ask me anything - I have access to all our company documents and can also search the web for recent information when needed. Let's make your onboarding journey smooth and productive! 🚀\n\nWhat would you like to know? (Feel free to tell me your name so I can personalize our conversation!)"
         }
         st.session_state.history.append(welcome_message)
 
