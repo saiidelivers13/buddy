@@ -70,9 +70,14 @@ def build_qa_chain():
 
     # Create the system prompt using the modern ChatPromptTemplate
     system_prompt = (
-        "You are Jerry AI, a helpful assistant. Use the given context to answer the question. "
+        "You are Jerry AI, the company's AI assistant. You have direct knowledge of all company information including policies, procedures, people, and data. "
         "You can also reference information from our previous conversation. "
-        "If you don't know the answer based on the context or conversation, say 'Sorry, I don't know based on the company data.' "
+        "Answer questions directly and naturally without mentioning sources like 'according to company documents' or 'based on our data'. "
+        "Respond as if you naturally know this information as part of being the company's AI assistant. "
+        "When someone asks about specific people or their details, provide ALL the relevant information you have about them including full names, contact details, fun facts, and any other specifics in a friendly, personal way. "
+        "Use first person pronouns when appropriate (e.g., 'Your buddy is Sneha' rather than 'Sneha is mentioned as a buddy'). "
+        "Avoid generic responses - be specific and use the actual details available. "
+        "If you don't have the information, simply say 'Sorry, I don't have that information.' "
         "Keep the answer concise and relevant. "
         "If someone asks who you are, introduce yourself as Jerry AI. "
         "If someone tells you their name, remember it and use it in future responses to personalize the conversation.\n\n"
@@ -109,7 +114,7 @@ def build_grounded_chain():
     
     return client, config, retriever
 
-def query_grounded_chain(client, config, retriever, question):
+def query_grounded_chain(client, config, retriever, question, conversation_history=None):
     """Query the grounded chain with both RAG context and web search - returns streaming response"""
     
     # Get relevant documents from RAG
@@ -117,25 +122,35 @@ def query_grounded_chain(client, config, retriever, question):
     context = "\n\n".join([doc.page_content for doc in docs])
     
     # Create enhanced prompt with both RAG context and web search capability
+    conversation_context = ""
+    if conversation_history:
+        conversation_context = f"""
+Previous conversation:
+{conversation_history}
+"""
+    
     enhanced_prompt = f"""
-    You are Jerry AI, a helpful assistant. You have access to company documents and web search.
+    You are Jerry AI, the company's AI assistant. You have direct knowledge of company information and access to web search.
     You can also reference information from our previous conversation.
     
-    Company Documents Context:
+    Company Information Available:
     {context}
-    
+    {conversation_context}
     Question: {question}
     
     Instructions:
-    1. First, check if the company documents contain relevant information
-    2. If the company documents have sufficient information, use that primarily
-    3. Use web search to supplement or verify information when needed
-    4. If the answer requires recent information not in company documents, rely more on web search
-    5. Always be clear about which sources you're using
-    6. If you can't find relevant information in either source, say so clearly
-    7. If someone asks who you are, introduce yourself as Jerry AI
-    8. If someone tells you their name, remember it and use it in future responses to personalize the conversation
-    9. Reference previous conversation context when relevant
+    1. You have direct knowledge of company information - answer naturally without mentioning sources
+    2. Do not say things like "according to company documents" or "based on our data" - just answer directly
+    3. Respond as if you naturally know this information (e.g., 'Your buddy is Sneha' not 'Sneha is mentioned as a buddy')
+    4. When someone asks about specific people, provide ALL relevant details you have about them including full names, contact details, fun facts, and any other specifics in a friendly, personal way
+    5. Avoid generic responses - be specific and use the actual details available
+    6. For company-related questions, use your company knowledge first
+    7. Use web search to supplement when you need current/external information
+    8. For recent information not in company data, rely on web search
+    9. If you can't find relevant information anywhere, simply say you don't have that information
+    10. If someone asks who you are, introduce yourself as Jerry AI
+    11. If someone tells you their name, remember it and use it in future responses to personalize the conversation
+    12. Reference previous conversation context when relevant
     """
     
     # Make the streaming request with grounding
@@ -196,22 +211,19 @@ def add_citations_to_text(response):
     return text
 
 def main():
-    st.set_page_config(page_title="Company-Doc Chatbot", page_icon="🤖")
+    st.set_page_config(page_title="Jerry AI", page_icon="🤖")
     # st.title("Jerry AI")
 
     # Sidebar for settings
     with st.sidebar:
-        # Jerry AI branding with centered layout
+        # Jerry AI branding
         st.markdown(
             """
             <div style='display: flex; flex-direction: column; align-items: center; text-align: center;'>
-                <img src='data:image/jpeg;base64,{}' width='120' style='border-radius: 10px; margin-bottom: 10px;'/>
                 <h1 style='color: #FF6B35; margin: 0; font-size: 2.5rem;'>Jerry AI</h1>
-                <p style='color: #888; font-style: italic; margin: 5px 0 20px 0;'>Your friendly AI assistant</p>
+                <p style='color: #888; font-style: italic; margin: 5px 0 20px 0;'>Your AI Buddy</p>
             </div>
-            """.format(
-                __import__('base64').b64encode(open('jeery.jpg', 'rb').read()).decode()
-            ),
+            """,
             unsafe_allow_html=True
         )
         
@@ -315,8 +327,18 @@ def main():
             try:
                 if use_web_search and 'client' in locals():
                     # Use grounded search with streaming
+                    # Include conversation history
+                    conversation_context = ""
+                    if len(st.session_state.history) > 1:  # More than just the welcome message
+                        recent_history = st.session_state.history[-6:]  # Last 6 messages (3 exchanges)
+                        for msg in recent_history:
+                            if msg["role"] == "user":
+                                conversation_context += f"User: {msg['content']}\n"
+                            elif msg["role"] == "assistant":
+                                conversation_context += f"Assistant: {msg['content']}\n"
+                    
                     with st.spinner("Searching documents and web..."):
-                        response_stream, rag_docs = query_grounded_chain(client, config, retriever, query)
+                        response_stream, rag_docs = query_grounded_chain(client, config, retriever, query, conversation_context)
                     
                     # Stream the response in real-time
                     def grounded_stream_generator():
@@ -340,9 +362,25 @@ def main():
                     if hasattr(st.session_state, 'last_grounded_response'):
                         final_response = st.session_state.last_grounded_response
                         
-                        # Add citations to the answer
+                        # Add citations to the answer only if there are actual web sources
                         answer_with_citations = add_citations_to_text(final_response)
-                        if answer_with_citations != answer:
+                        
+                        # Check if there are actual web sources before showing citations
+                        has_web_sources = False
+                        if hasattr(final_response, 'candidates') and final_response.candidates:
+                            candidate = final_response.candidates[0]
+                            if hasattr(candidate, 'grounding_metadata') and candidate.grounding_metadata:
+                                grounding_metadata = candidate.grounding_metadata
+                                grounding_chunks = getattr(grounding_metadata, 'grounding_chunks', [])
+                                if grounding_chunks:  # Check if chunks exist
+                                    for chunk in grounding_chunks:
+                                        web_info = getattr(chunk, 'web', None)
+                                        if web_info:
+                                            has_web_sources = True
+                                            break
+                        
+                        # Only show citations if there are actual web sources and the text has changed
+                        if answer_with_citations != answer and has_web_sources:
                             st.markdown("**With citations:**")
                             st.markdown(answer_with_citations)
                         
@@ -374,8 +412,24 @@ def main():
                 
                 else:
                     # Use standard RAG-only chain with streaming
+                    # Include conversation history in the input
+                    conversation_context = ""
+                    if len(st.session_state.history) > 1:  # More than just the welcome message
+                        recent_history = st.session_state.history[-6:]  # Last 6 messages (3 exchanges)
+                        for msg in recent_history:
+                            if msg["role"] == "user":
+                                conversation_context += f"User: {msg['content']}\n"
+                            elif msg["role"] == "assistant":
+                                conversation_context += f"Assistant: {msg['content']}\n"
+                    
+                    # Combine current query with conversation context
+                    enhanced_query = f"""Previous conversation:
+{conversation_context}
+
+Current question: {query}"""
+                    
                     def rag_stream_generator():
-                        for chunk in qa.stream({"input": query}):
+                        for chunk in qa.stream({"input": enhanced_query}):
                             if "answer" in chunk:
                                 yield chunk["answer"]
                     
@@ -388,8 +442,31 @@ def main():
                 answer = f"Error during generation: {e}"
                 st.markdown(answer)
 
-            # Store message in history
-            message_data = {"role": "assistant", "content": answer}
+            # Store message in history (include citations if they exist)
+            final_content = answer
+            if use_web_search and hasattr(st.session_state, 'last_grounded_response'):
+                final_response = st.session_state.last_grounded_response
+                answer_with_citations = add_citations_to_text(final_response)
+                
+                # Check if there are actual web sources
+                has_web_sources = False
+                if hasattr(final_response, 'candidates') and final_response.candidates:
+                    candidate = final_response.candidates[0]
+                    if hasattr(candidate, 'grounding_metadata') and candidate.grounding_metadata:
+                        grounding_metadata = candidate.grounding_metadata
+                        grounding_chunks = getattr(grounding_metadata, 'grounding_chunks', [])
+                        if grounding_chunks:
+                            for chunk in grounding_chunks:
+                                web_info = getattr(chunk, 'web', None)
+                                if web_info:
+                                    has_web_sources = True
+                                    break
+                
+                # If there are web sources and citations, include them in the stored content
+                if answer_with_citations != answer and has_web_sources:
+                    final_content = f"{answer}\n\n**With citations:**\n{answer_with_citations}"
+            
+            message_data = {"role": "assistant", "content": final_content}
             st.session_state.history.append(message_data)
 
 
