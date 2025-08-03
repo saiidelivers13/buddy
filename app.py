@@ -317,7 +317,7 @@ def main():
             
             # Sources display removed per user request
 
-    if query := st.chat_input("Ask a question about your documents..."):
+    if query := st.chat_input("Ask a question ..."):
         # Add user message to history and display it
         st.session_state.history.append({"role": "user", "content": query})
         with st.chat_message("user"):
