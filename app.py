@@ -275,7 +275,7 @@ def main():
         if use_web_search:
             st.info("🔍 Web search enabled - responses will include real-time information and citations")
         else:
-            st.info("📄 Document-only mode - responses based on your uploaded documents")
+            st.info("📄 Document-only mode - responses are based on Company Policies, Procedures, People, and Data")
     
     # Initialize the appropriate chain based on settings
     if use_web_search:
