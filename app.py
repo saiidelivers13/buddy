@@ -197,10 +197,60 @@ def add_citations_to_text(response):
 
 def main():
     st.set_page_config(page_title="Company-Doc Chatbot", page_icon="🤖")
-    st.title("Jerry AI")
+    # st.title("Jerry AI")
 
     # Sidebar for settings
     with st.sidebar:
+        # Jerry AI branding with centered layout
+        st.markdown(
+            """
+            <div style='display: flex; flex-direction: column; align-items: center; text-align: center;'>
+                <img src='data:image/jpeg;base64,{}' width='120' style='border-radius: 10px; margin-bottom: 10px;'/>
+                <h1 style='color: #FF6B35; margin: 0; font-size: 2.5rem;'>Jerry AI</h1>
+                <p style='color: #888; font-style: italic; margin: 5px 0 20px 0;'>Your friendly AI assistant</p>
+            </div>
+            """.format(
+                __import__('base64').b64encode(open('jeery.jpg', 'rb').read()).decode()
+            ),
+            unsafe_allow_html=True
+        )
+        
+        # Sample questions with better styling
+        st.markdown("---")
+        st.markdown("### 💭 **Sample Questions**")
+        
+        # Create expandable sections for better organization
+        with st.container():
+
+            st.markdown("""
+            <div style='background-color: #2E3440; color: white; padding: 15px; border-radius: 10px; margin: 10px 0; border-left: 4px solid #1E88E5;'>
+                <strong>🚀 Getting Started:</strong><br>
+                • What should I do in my first week?<br>
+                • Tell me about the onboarding process
+            </div>
+            """, unsafe_allow_html=True)
+
+
+            
+            st.markdown("""
+            <div style='background-color: #2E3440; color: white; padding: 15px; border-radius: 10px; margin: 10px 0; border-left: 4px solid #FF6B35;'>
+                <strong>🏢 Company Info:</strong><br>
+                • What are the company values?<br>
+                • Tell me about the company culture
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.markdown("""
+            <div style='background-color: #2E3440; color: white; padding: 15px; border-radius: 10px; margin: 10px 0; border-left: 4px solid #4C9A2A;'>
+                <strong>👥 Contacts & Support:</strong><br>
+                • Who is my HR contact?<br>
+                • How do I contact IT support?
+            </div>
+            """, unsafe_allow_html=True)
+            
+
+        st.divider()
+        
         # st.header("⚙️ Settings")
         
         # Web search toggle
@@ -244,7 +294,7 @@ def main():
         # Add welcome message as the first message
         welcome_message = {
             "role": "assistant",
-            "content": "Hi there! 👋 Welcome to the team! \n\nI'm Jerry, your AI assistant. I'm here to help you with any questions or doubts you might have about our company, policies, procedures, or anything work-related. \n\nFeel free to ask me anything - I have access to all our company documents and can also search the web for recent information when needed. Let's make your onboarding journey smooth and productive! 🚀\n\nWhat would you like to know? (Feel free to tell me your name so I can personalize our conversation!)"
+            "content": "Hi there! 👋 Welcome to the team! \n\nI'm Jerry, your AI assistant. I'm here to help you with any questions or doubts you might have about our company, policies, procedures, or anything work-related. \n\nFeel free to ask me anything . Let's make your onboarding journey smooth and productive! 🚀\n\nWhat would you like to know? (Feel free to tell me your name so I can personalize our conversation!)"
         }
         st.session_state.history.append(welcome_message)
 
@@ -253,16 +303,7 @@ def main():
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
             
-            # Display stored sources if they exist (preserves sources across mode switches)
-            if isinstance(message, dict) and message.get("sources"):
-                sources = message["sources"]
-                with st.expander(f"📄 Retrieved {len(sources)} source doc(s)"):
-                    for i, doc in enumerate(sources, 1):
-                        if hasattr(doc, 'page_content'):
-                            snip = doc.page_content.strip().replace("\n", " ")
-                            st.write(f"**#{i}**: _{snip[:250]}…_")
-                        else:
-                            st.write(f"**#{i}**: {str(doc)[:250]}...")
+            # Sources display removed per user request
 
     if query := st.chat_input("Ask a question about your documents..."):
         # Add user message to history and display it
@@ -329,13 +370,7 @@ def main():
                                                 title = getattr(web_info, 'title', f'Source {i}')
                                                 st.write(f"**{i}.** [{title}]({uri})")
                         
-                        # Show RAG documents
-                        if hasattr(st.session_state, 'last_rag_docs') and st.session_state.last_rag_docs:
-                            rag_docs = st.session_state.last_rag_docs
-                            with st.expander(f"📄 Company documents ({len(rag_docs)})"):
-                                for i, doc in enumerate(rag_docs, 1):
-                                    snip = doc.page_content.strip().replace("\n", " ")
-                                    st.write(f"**#{i}**: _{snip[:250]}…_")
+                        # RAG documents display removed per user request
                 
                 else:
                     # Use standard RAG-only chain with streaming
@@ -347,28 +382,14 @@ def main():
                     # Stream the RAG response
                     answer = st.write_stream(rag_stream_generator())
                     
-                    # Get the full response for source documents
-                    full_output = qa.invoke({"input": query})
-                    docs = full_output.get("context", [])
-                    if docs:
-                        with st.expander(f"📄 Retrieved {len(docs)} source doc(s)"):
-                            for i, doc in enumerate(docs, 1):
-                                snip = doc.page_content.strip().replace("\n", " ")
-                                st.write(f"**#{i}**: _{snip[:250]}…_")
+                    # Source documents display removed per user request
                 
             except Exception as e:
                 answer = f"Error during generation: {e}"
                 st.markdown(answer)
 
-            # Store message with sources in history (simple approach)
+            # Store message in history
             message_data = {"role": "assistant", "content": answer}
-            
-            # Add sources if they exist
-            if use_web_search and 'rag_docs' in locals():
-                message_data["sources"] = rag_docs
-            elif 'docs' in locals():
-                message_data["sources"] = docs
-            
             st.session_state.history.append(message_data)
 
 
